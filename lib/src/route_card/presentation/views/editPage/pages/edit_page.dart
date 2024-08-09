@@ -7,7 +7,6 @@ import 'package:routescom/core/theme/color_app.dart';
 import 'package:routescom/src/communication/presentation/views/widgets/button_widget.dart';
 import 'package:routescom/src/customisation/presentation/providers/customisation_controller.dart';
 import 'package:routescom/src/route_card/domain/entities/route_card.dart';
-import 'package:routescom/src/route_card/data/models/route_card_model.dart';
 import 'package:routescom/src/route_card/presentation/providers/card_controller.dart';
 import 'package:routescom/src/route_card/presentation/providers/route_card_controller.dart';
 

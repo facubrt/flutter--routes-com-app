@@ -11,7 +11,7 @@ class AppParametersModel extends AppParameters {
     });
 
   static AppParametersModel empty = AppParametersModel(
-    factorSize: 0.03,
+    factorSize: 0.06,
     factorText: FACTOR_TEXT_DEFAULT,
     highContrast: false,
     editMode: false,

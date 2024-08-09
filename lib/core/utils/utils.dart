@@ -11,6 +11,7 @@ Future<String> loadTemplates(String template) async {
   File file = File('${applicationDocumentsDirectory.path}/template-fleni.hive');
   await file.writeAsBytes(fleniByte.buffer
       .asUint8List(fleniByte.offsetInBytes, fleniByte.lengthInBytes));
+  print(file.path);
   return file.path;
 }
 

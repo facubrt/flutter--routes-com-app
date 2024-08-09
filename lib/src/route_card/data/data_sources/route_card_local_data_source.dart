@@ -109,18 +109,18 @@ class HiveRouteCardLocalDataSourceImpl implements RouteCardLocalDataSource {
   Future<bool> exportRouteCard(int id, String backupPath) async {
     try {
       Box<dynamic> box = await Hive.openBox('routeCards');
-      // Box<dynamic> backupBox = await Hive.openBox('backupRouteCards');
+      Box<dynamic> backupBox = await Hive.openBox('backupRouteCards');
       // SE EXPORTA LA PLANTILLA
       // PRIMERO PASAMOS LA TARJETA Y SUS HIJAS AL BOX BACKUP
-      RouteCardModel routeCard = box.get(id) as RouteCardModel;
-      final boxPath = box.path!;
+      RouteCardModel routeCard = RouteCardModel.fromJson(box.get(id));
+      final boxPath = backupBox.path!;
       // SE GUARDAN LAS RUTAS
-      _saveTemplate(id);
+      _saveTemplate(id, box, backupBox);
       // SE CIERRA EL BOX BACKUP
-      await box.close();
+      await backupBox.close();
       // SE REALIZA LA COPIA DE SEGURIDAD
-      await _exportTemplate(
-          cardTitle: routeCard.name, boxPath: boxPath, backupPath: backupPath);
+      await _exportTemplate(cardTitle: routeCard.name, boxPath: boxPath, backupPath: backupPath);
+      
       _clearBackupBox();
       return true;
     } catch (e) {
@@ -150,25 +150,20 @@ class HiveRouteCardLocalDataSourceImpl implements RouteCardLocalDataSource {
 
   @override
   Future<bool> importRouteCard(String backupPath) async {
+    print('IMPORT ROUTE CARD');
     try {
       Box<dynamic> box = await Hive.openBox('routeCards');
       Box<dynamic> backupBox = await Hive.openBox('backupRouteCards');
       // final prefs = UserPreferences();
-      final boxPath = box.path!;
-      await box.close();
+      final boxPath = backupBox.path!;
+      print(boxPath);
+      //await backupBox.close();
       // copy backup file
       File(backupPath).copy(boxPath);
-      box = await Hive.openBox('routeCards');
-      final parentCards = backupBox.values.where((card) => card.parent == null);
+      //box = await Hive.openBox('backupRouteCards');
+      final parentCards = backupBox.values.where((card) => RouteCardModel.fromJson(card).parent == null);
       for (var parent in parentCards) {
-        // if (parent.name == TEMPLATE_FAMILY_TITLE) {
-        //   prefs.templateFamilyLoaded = true;
-        // } else if (parent.name == TEMPLATE_FLENI_TITLE) {
-        //   prefs.templateFleniLoaded = true;
-        // } else if (parent.name == TEMPLATE_HOME_TITLE) {
-        //   prefs.templateHomeLoaded = true;
-        // }
-        _loadTemplate(id: parent.id);
+        _loadTemplate(id: RouteCardModel.fromJson(parent).id);
       }
       _clearBackupBox();
       return true;
@@ -183,7 +178,7 @@ class HiveRouteCardLocalDataSourceImpl implements RouteCardLocalDataSource {
       Box<dynamic> box = await Hive.openBox('routeCards');
       Box<dynamic> backupBox = await Hive.openBox('backupRouteCards');
       int newId = box.isNotEmpty ? box.values.last.id + 1 : 0;
-      final RouteCardModel card = backupBox.get(id) as RouteCardModel;
+      final RouteCardModel card = RouteCardModel.fromJson(backupBox.get(id));
       RouteCardModel restoredCard = RouteCardModel(
         id: newId,
         name: card.name,
@@ -224,38 +219,33 @@ class HiveRouteCardLocalDataSourceImpl implements RouteCardLocalDataSource {
     throw UnimplementedError();
   }
 
-  Future<void> _saveTemplate(int id) async {
-    try {
-      Box<dynamic> box = await Hive.openBox('routeCards');
-      Box<dynamic> backupBox = await Hive.openBox('backupRouteCards');
-      RouteCardModel card = box.get(id) as RouteCardModel;
-      if (card.children!.isNotEmpty) {
-        for (int i = card.children!.length - 1; i >= 0; i--) {
-          _saveTemplate(card.children![i]);
-        }
+  void _saveTemplate(int id, Box<dynamic> box, Box<dynamic> backupBox) {
+    RouteCardModel card = RouteCardModel.fromJson(box.get(id));
+    print('SAVE ROUTECARD: ${card.name}');
+    
+    if (card.children!.isNotEmpty) {
+      for (int i = card.children!.length - 1; i >= 0; i--) {
+        _saveTemplate(card.children![i], box, backupBox);
       }
-      backupBox.put(
-        id,
-        RouteCardModel.fromJson(
-          box.get(id),
-        ),
-      );
-    } catch (e) {
-      debugPrint(e.toString());
-      throw LocalFailure(message: e.toString());
     }
+
+    print('SAVE ROUTECARD: ${card.name}');
+    backupBox.put(id, card.toJson());
   }
 
   Future<void> _exportTemplate(
       {required cardTitle,
       required String boxPath,
       required String backupPath}) async {
+        print(boxPath);
+        print(backupPath);
     try {
+      
       var status = await Permission.storage.status;
       if (!status.isGranted) {
         await Permission.storage.request();
       }
-
+      
       backupPath =
           '$backupPath/$cardTitle-${DateTime.now().day.toString().padLeft(2, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().year}-backup.hive';
       await File(boxPath).copy(backupPath);
